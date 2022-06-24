@@ -1,0 +1,224 @@
+<?php
+
+/* Copyright (c) 2018 Nils Haagen <nils.haagen@concepts-and-training.de> Extended GPL, see docs/LICENSE */
+
+require_once(__DIR__ . "/../../../../../libs/composer/vendor/autoload.php");
+require_once(__DIR__ . "/../../../Base.php");
+require_once(__DIR__ . "/InputTest.php");
+
+use ILIAS\UI\Implementation\Component\SignalGenerator;
+use ILIAS\UI\Implementation\Component\Input\InputData;
+use ILIAS\Data\Password as PWD;
+use \ILIAS\UI\Component\Input\Field;
+use \ILIAS\Data;
+
+class _PWDInputData implements InputData
+{
+    public function get($name)
+    {
+        return 'some value';
+    }
+    public function getOr($name, $default)
+    {
+        return 'some alternative value';
+    }
+}
+
+class PasswordInputTest extends ILIAS_UI_TestBase
+{
+    public function setUp() : void
+    {
+        $this->name_source = new DefNamesource();
+    }
+
+
+    protected function buildFactory()
+    {
+        $df = new Data\Factory();
+        $language = $this->createMock(\ilLanguage::class);
+        return new ILIAS\UI\Implementation\Component\Input\Field\Factory(
+            new SignalGenerator(),
+            $df,
+            new \ILIAS\Refinery\Factory($df, $language),
+            $language
+        );
+    }
+
+
+    public function test_implements_factory_interface()
+    {
+        $f = $this->buildFactory();
+        $pwd = $f->password("label", "byline");
+        $this->assertInstanceOf(Field\Input::class, $pwd);
+        $this->assertInstanceOf(Field\Password::class, $pwd);
+    }
+
+
+    public function test_render()
+    {
+        $f = $this->buildFactory();
+        $label = "label";
+        $byline = "byline";
+        $name = "name_0";
+        $pwd = $f->password($label, $byline)->withNameFrom($this->name_source);
+
+        $r = $this->getDefaultRenderer();
+        $expected = ""
+            . "<div class=\"form-group row\">"
+                . "<label class=\"control-label col-sm-3\">$label</label>"
+                . "<div class=\"col-sm-9\">"
+                    . "<div class=\"il-input-password\" id=\"id_1\">"
+                        . "<input type=\"password\" name=\"$name\" class=\"form-control form-control-sm\" />"
+                    . "</div>"
+                    . "<div class=\"help-block\">$byline</div>"
+                . "</div>"
+            . "</div>";
+        $this->assertHTMLEquals($expected, $r->render($pwd));
+    }
+
+
+    public function test_render_error()
+    {
+        $f = $this->buildFactory();
+        $label = "label";
+        $byline = "byline";
+        $name = "name_0";
+        $error = "an_error";
+        $pwd = $f->password($label, $byline)->withNameFrom($this->name_source)->withError($error);
+
+        $r = $this->getDefaultRenderer();
+        $html = $this->brutallyTrimHTML($r->render($pwd));
+        $expected = $this->brutallyTrimHTML('
+<div class="form-group row">
+   <label class="control-label col-sm-3">label</label>
+   <div class="col-sm-9">
+      <div class="help-block alert alert-danger" role="alert">an_error</div>
+      <div class="il-input-password" id="id_1"><input type="password" name="name_0" class="form-control form-control-sm" /></div>
+      <div class="help-block">byline</div>
+   </div>
+</div>');
+
+        $this->assertEquals($expected, $html);
+    }
+
+
+    public function test_render_no_byline()
+    {
+        $f = $this->buildFactory();
+        $label = "label";
+        $name = "name_0";
+        $pwd = $f->password($label)->withNameFrom($this->name_source);
+
+        $r = $this->getDefaultRenderer();
+        $expected = ""
+            . "<div class=\"form-group row\">"
+                . "<label class=\"control-label col-sm-3\">$label</label>"
+                . "<div class=\"col-sm-9\">"
+                    . "<div class=\"il-input-password\" id=\"id_1\">"
+                        . "<input type=\"password\" name=\"$name\" class=\"form-control form-control-sm\" />"
+                    . "</div>"
+                . "</div>"
+            . "</div>";
+        $this->assertHTMLEquals($expected, $r->render($pwd));
+    }
+
+
+    public function test_render_value()
+    {
+        $f = $this->buildFactory();
+        $label = "label";
+        $value = "value_0";
+        $name = "name_0";
+        $pwd = $f->password($label)->withValue($value)->withNameFrom($this->name_source);
+
+        $r = $this->getDefaultRenderer();
+        $expected = ""
+            . "<div class=\"form-group row\">"
+                . "<label class=\"control-label col-sm-3\">$label</label>"
+                . "<div class=\"col-sm-9\">"
+                    . "<div class=\"il-input-password\" id=\"id_1\">"
+                        . "<input type=\"password\" name=\"$name\" value=\"$value\" class=\"form-control form-control-sm\" />"
+                    . "</div>"
+                . "</div>"
+            . "</div>";
+        $this->assertHTMLEquals($expected, $r->render($pwd));
+    }
+
+
+    public function test_render_required()
+    {
+        $f = $this->buildFactory();
+        $label = "label";
+        $name = "name_0";
+        $pwd = $f->password($label)->withNameFrom($this->name_source)->withRequired(true);
+
+        $r = $this->getDefaultRenderer();
+        $html = $r->render($pwd);
+
+        $expected = ""
+        . "<div class=\"form-group row\">"
+            . "<label class=\"control-label col-sm-3\">" . "$label"
+                . "<span class=\"asterisk\">*</span>"
+            . "</label>"
+            . "<div class=\"col-sm-9\">"
+                . "<div class=\"il-input-password\" id=\"id_1\">"
+                    . "<input type=\"password\" name=\"$name\" class=\"form-control form-control-sm\" />"
+                . "</div>"
+            . "</div>"
+        . "</div>";
+        $this->assertHTMLEquals($expected, $html);
+    }
+
+
+    public function test_render_disabled()
+    {
+        $f = $this->buildFactory();
+        $label = "label";
+        $name = "name_0";
+        $pwd = $f->password($label)->withNameFrom($this->name_source)->withDisabled(true);
+
+        $r = $this->getDefaultRenderer();
+        $html = $r->render($pwd);
+
+        $expected = ""
+        . "<div class=\"form-group row\">"
+            . "<label class=\"control-label col-sm-3\">$label</label>"
+            . "<div class=\"col-sm-9\">"
+                . "<div class=\"il-input-password\" id=\"id_1\">"
+                    . "<input type=\"password\" name=\"$name\" disabled=\"disabled\" class=\"form-control form-control-sm\" />"
+                . "</div>"
+            . "</div>"
+        . "</div>";
+        $this->assertHTMLEquals($expected, $html);
+    }
+
+
+    public function test_value_required()
+    {
+        $f = $this->buildFactory();
+        $label = "label";
+        $name = "name_0";
+        $pwd = $f->password($label)->withNameFrom($this->name_source)->withRequired(true);
+
+        $pwd1 = $pwd->withInput(new DefInputData([$name => "0"]));
+        $value1 = $pwd1->getContent();
+        $this->assertTrue($value1->isOk());
+
+        $pwd2 = $pwd->withInput(new DefInputData([$name => ""]));
+        $value2 = $pwd2->getContent();
+        $this->assertTrue($value2->isError());
+    }
+
+    public function test_value_type()
+    {
+        $f = $this->buildFactory();
+        $label = "label";
+        $pwd = $f->password($label)->withNameFrom($this->name_source);
+        $this->assertNull($pwd->getValue());
+
+        $post = new _PWDInputData();
+        $pwd = $pwd->withInput($post);
+        $this->assertEquals($post->getOr('', ''), $pwd->getValue());
+        $this->assertInstanceOf(PWD::class, $pwd->getContent()->value());
+    }
+}

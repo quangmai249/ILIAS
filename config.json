@@ -7,7 +7,7 @@
         "password": ""
     },
     "filesystem": {
-        "data_dir": "/xampp/htdocs/files"
+        "data_dir": "/var/www/files"
     },
     "http": {
         "path": "http://demo1.cat06.de"
